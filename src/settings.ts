@@ -4,6 +4,7 @@ export interface SetlistSettings {
   fontSize: number;
   theme: "dark" | "light";
   columns: 1 | 2;
+  fitToScreen: boolean;
   tapZones: boolean;
   wakeLock: boolean;
 }
@@ -14,6 +15,7 @@ export const DEFAULT_SETTINGS: SetlistSettings = {
   fontSize: 28,
   theme: "dark",
   columns: 1,
+  fitToScreen: false,
   tapZones: true,
   wakeLock: true,
 };

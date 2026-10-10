@@ -98,6 +98,14 @@ export class PerformanceView extends ItemView {
       this.plugin.settings.columns = this.plugin.settings.columns === 2 ? 1 : 2;
       await this.plugin.saveSettings();
       this.applyColumns();
+      this.applyFit();
+    };
+    const fit = this.barEl.createEl("button", { cls: "setlist-btn", attr: { "aria-label": "Fit song to screen" } });
+    setIcon(fit, "scaling");
+    fit.onclick = async () => {
+      this.plugin.settings.fitToScreen = !this.plugin.settings.fitToScreen;
+      await this.plugin.saveSettings();
+      this.applyFit();
     };
     const theme = this.barEl.createEl("button", { cls: "setlist-btn", attr: { "aria-label": "Toggle theme" } });
     setIcon(theme, "sun-moon");
@@ -121,6 +129,7 @@ export class PerformanceView extends ItemView {
 
     this.applyFontSize();
     this.applyColumns();
+    this.registerDomEvent(window, "resize", () => this.applyFit());
     await this.requestWakeLock();
     await this.reload();
   }
@@ -145,9 +154,30 @@ export class PerformanceView extends ItemView {
   }
 
   private async changeFont(delta: number): Promise<void> {
+    this.plugin.settings.fitToScreen = false;
     this.plugin.settings.fontSize = Math.min(96, Math.max(12, this.plugin.settings.fontSize + delta));
-    this.applyFontSize();
+    this.applyFit();
     await this.plugin.saveSettings();
+  }
+
+  /** In fit mode, finds the largest font size at which the song needs no scrolling. */
+  applyFit(): void {
+    const fit = this.plugin.settings.fitToScreen;
+    this.contentEl.toggleClass("setlist-fit", fit);
+    this.applyFontSize();
+    if (!fit || !this.bodyEl) return;
+    const overflows = () =>
+      this.bodyEl.scrollHeight > this.bodyEl.clientHeight + 1 ||
+      this.bodyEl.scrollWidth > this.bodyEl.clientWidth + 1;
+    let lo = 10;
+    let hi = 120;
+    while (hi - lo > 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      this.contentEl.style.setProperty("--setlist-font-size", `${mid}px`);
+      if (overflows()) hi = mid;
+      else lo = mid;
+    }
+    this.contentEl.style.setProperty("--setlist-font-size", `${lo}px`);
   }
 
   private async requestWakeLock(): Promise<void> {
@@ -223,6 +253,7 @@ export class PerformanceView extends ItemView {
     }
 
     this.scrollEl.scrollTo({ top: 0 });
+    this.applyFit();
   }
 
   private showJumpMenu(e: MouseEvent): void {

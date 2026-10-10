@@ -227,6 +227,15 @@ class SetlistSettingTab extends PluginSettingTab {
         }),
     );
     new Setting(containerEl)
+      .setName("Fit song to screen")
+      .setDesc("Automatically shrink the text so the whole song is visible without scrolling.")
+      .addToggle((t) =>
+        t.setValue(s.fitToScreen).onChange(async (v) => {
+          s.fitToScreen = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
       .setName("Tap screen edges to navigate")
       .setDesc("Tap the left or right 20% of the screen for previous or next song.")
       .addToggle((t) =>

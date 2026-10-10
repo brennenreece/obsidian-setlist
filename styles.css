@@ -188,3 +188,20 @@
 .setlist-two-col .setlist-song-body > * {
   break-inside: avoid;
 }
+
+.setlist-fit .setlist-scroll {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+.setlist-fit .setlist-song-body {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.setlist-fit.setlist-two-col .setlist-song-body {
+  column-fill: auto;
+}
+.setlist-fit .setlist-song-footer {
+  margin-top: 0.5em;
+}
