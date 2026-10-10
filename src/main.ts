@@ -217,6 +217,15 @@ class SetlistSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }),
     );
+    new Setting(containerEl).setName("Columns").addDropdown((d) =>
+      d
+        .addOptions({ "1": "One", "2": "Two" })
+        .setValue(String(s.columns))
+        .onChange(async (v) => {
+          s.columns = v === "2" ? 2 : 1;
+          await this.plugin.saveSettings();
+        }),
+    );
     new Setting(containerEl)
       .setName("Tap screen edges to navigate")
       .setDesc("Tap the left or right 20% of the screen for previous or next song.")

@@ -92,6 +92,13 @@ export class PerformanceView extends ItemView {
     smaller.onclick = () => void this.changeFont(-2);
     const larger = this.barEl.createEl("button", { cls: "setlist-btn", text: "A+" });
     larger.onclick = () => void this.changeFont(2);
+    const cols = this.barEl.createEl("button", { cls: "setlist-btn", attr: { "aria-label": "Toggle two columns" } });
+    setIcon(cols, "columns-2");
+    cols.onclick = async () => {
+      this.plugin.settings.columns = this.plugin.settings.columns === 2 ? 1 : 2;
+      await this.plugin.saveSettings();
+      this.applyColumns();
+    };
     const theme = this.barEl.createEl("button", { cls: "setlist-btn", attr: { "aria-label": "Toggle theme" } });
     setIcon(theme, "sun-moon");
     theme.onclick = async () => {
@@ -113,6 +120,7 @@ export class PerformanceView extends ItemView {
     });
 
     this.applyFontSize();
+    this.applyColumns();
     await this.requestWakeLock();
     await this.reload();
   }
@@ -126,6 +134,10 @@ export class PerformanceView extends ItemView {
   applyTheme(): void {
     this.contentEl.toggleClass("setlist-light", this.plugin.settings.theme === "light");
     this.contentEl.toggleClass("setlist-dark", this.plugin.settings.theme === "dark");
+  }
+
+  applyColumns(): void {
+    this.contentEl.toggleClass("setlist-two-col", this.plugin.settings.columns === 2);
   }
 
   applyFontSize(): void {

@@ -179,3 +179,12 @@
 .setlist-dash-online h4 {
   margin: 8px 0 0;
 }
+
+.setlist-two-col .setlist-song-body {
+  column-count: 2;
+  column-gap: 5vw;
+  column-rule: 1px solid var(--setlist-muted);
+}
+.setlist-two-col .setlist-song-body > * {
+  break-inside: avoid;
+}
