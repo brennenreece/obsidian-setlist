@@ -1,6 +1,7 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import type SetlistPlugin from "./main";
-import { ImportSongModal, LyricsSearchModal } from "./importer";
+import { ImportSongModal, downloadLyrics } from "./importer";
+import { LyricsResult, searchLyrics } from "./lrclib";
 import { ConfirmModal, TextPromptModal } from "./modals";
 import { getSetlists, isSetlist } from "./setlist";
 import { SetlistItem, editSetlist, moveItem, parseSetlist } from "./setlistModel";
@@ -15,6 +16,11 @@ export class DashboardView extends ItemView {
   private libraryEl!: HTMLElement;
   private setlistEl!: HTMLElement;
   private tagSelect!: HTMLSelectElement;
+  private onlineEl!: HTMLElement;
+  private onlineToken = 0;
+  private onlineQuery = "";
+  private onlineResults: LyricsResult[] | null = null;
+  private onlineStatus = "";
   private refreshTimer: number | null = null;
   private dragFrom = -1;
 
@@ -48,7 +54,6 @@ export class DashboardView extends ItemView {
     root.addClass("setlist-dash");
 
     const toolbar = root.createDiv("setlist-dash-toolbar");
-    this.button(toolbar, "search", "Search lyrics online", () => new LyricsSearchModal(this.app, this.plugin).open());
     this.button(toolbar, "file-down", "Import song", () => new ImportSongModal(this.app, this.plugin).open());
     this.button(toolbar, "plus", "New song", () => this.newSong());
 
@@ -56,10 +61,21 @@ export class DashboardView extends ItemView {
     const left = panes.createDiv("setlist-dash-pane");
     left.createEl("h3", { text: "Songs" });
     const filters = left.createDiv("setlist-dash-filters");
-    const input = filters.createEl("input", { type: "search", placeholder: "Search title, artist, key, tag" });
+    const input = filters.createEl("input", {
+      type: "search",
+      placeholder: "Search library · Enter to search online",
+    });
     input.addEventListener("input", () => {
       this.search = input.value.toLowerCase();
       this.renderLibrary();
+      if (input.value.trim() !== this.onlineQuery) {
+        this.onlineResults = null;
+        this.onlineStatus = "";
+        this.renderOnline();
+      }
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") void this.searchOnline(input.value);
     });
     this.tagSelect = filters.createEl("select");
     this.tagSelect.addEventListener("change", () => {
@@ -67,6 +83,7 @@ export class DashboardView extends ItemView {
       this.renderLibrary();
     });
     this.libraryEl = left.createDiv("setlist-dash-list");
+    this.onlineEl = left.createDiv("setlist-dash-list setlist-dash-online");
 
     this.setlistEl = panes.createDiv("setlist-dash-pane");
 
@@ -124,7 +141,61 @@ export class DashboardView extends ItemView {
 
   private async renderAll(): Promise<void> {
     this.renderLibrary();
+    this.renderOnline();
     this.renderSetlist();
+  }
+
+  private async searchOnline(raw: string): Promise<void> {
+    const query = raw.trim();
+    if (!query) return;
+    const token = ++this.onlineToken;
+    this.onlineQuery = query;
+    this.onlineResults = null;
+    this.onlineStatus = "Searching online…";
+    this.renderOnline();
+    try {
+      const results = await searchLyrics(query);
+      if (token !== this.onlineToken) return;
+      this.onlineResults = results.slice(0, 20);
+      this.onlineStatus = results.length ? "" : "No online results.";
+    } catch (e) {
+      if (token !== this.onlineToken) return;
+      this.onlineStatus = `Online search failed: ${(e as Error).message}`;
+    }
+    this.renderOnline();
+  }
+
+  private renderOnline(): void {
+    const el = this.onlineEl;
+    el.empty();
+    const typed = this.search.trim();
+    if (!typed && !this.onlineResults && !this.onlineStatus) return;
+
+    if (!this.onlineResults && !this.onlineStatus) {
+      const row = el.createDiv("setlist-dash-row setlist-dash-online-prompt");
+      const info = row.createDiv("setlist-dash-info");
+      info.createDiv({ cls: "setlist-dash-title", text: `Search online for “${typed}”` });
+      info.createDiv({ cls: "setlist-dash-meta", text: "LRCLIB · lyrics only" });
+      info.onclick = () => void this.searchOnline(typed);
+      this.iconButton(row, "globe", "Search online", () => void this.searchOnline(typed));
+      return;
+    }
+
+    el.createEl("h4", { text: "Online results" });
+    if (this.onlineStatus) el.createEl("p", { cls: "setlist-dash-empty", text: this.onlineStatus });
+    for (const r of this.onlineResults ?? []) {
+      const row = el.createDiv("setlist-dash-row");
+      const info = row.createDiv("setlist-dash-info");
+      info.createDiv({ cls: "setlist-dash-title", text: r.trackName });
+      info.createDiv({
+        cls: "setlist-dash-meta",
+        text: [r.artistName, r.albumName].filter(Boolean).join(" · "),
+      });
+      this.iconButton(row, "download", "Download to library", async () => {
+        await downloadLyrics(this.app, this.plugin.settings.songFolder, r);
+        this.scheduleRefresh();
+      });
+    }
   }
 
   private renderLibrary(): void {

@@ -103,16 +103,21 @@ export class LyricsSearchModal extends Modal {
   }
 
   private async download(r: LyricsResult): Promise<void> {
-    const file = await createSongNote(
-      this.app,
-      this.plugin.settings.songFolder,
-      { title: r.trackName, artist: r.artistName, source: "lrclib.net" },
-      toMarkdownLines(r.plainLyrics ?? ""),
-    );
-    new Notice(`Saved “${file.basename}”`);
+    const file = await downloadLyrics(this.app, this.plugin.settings.songFolder, r);
     this.close();
     await this.app.workspace.getLeaf(false).openFile(file);
   }
+}
+
+export async function downloadLyrics(app: App, folder: string, r: LyricsResult): Promise<TFile> {
+  const file = await createSongNote(
+    app,
+    folder,
+    { title: r.trackName, artist: r.artistName, source: "lrclib.net" },
+    toMarkdownLines(r.plainLyrics ?? ""),
+  );
+  new Notice(`Saved “${file.basename}”`);
+  return file;
 }
 
 /** Splits ChordPro-style {directives} into metadata; everything else stays in the body so inline [C] chords are preserved. */
