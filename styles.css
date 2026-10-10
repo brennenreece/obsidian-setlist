@@ -97,3 +97,81 @@
   width: 100%;
   font-family: var(--font-monospace);
 }
+
+.setlist-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+.setlist-dash-toolbar,
+.setlist-dash-actions,
+.setlist-dash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.setlist-dash-filters input[type="search"] {
+  flex: 1 1 140px;
+}
+.setlist-dash-panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 700px) {
+  .setlist-dash-panes {
+    grid-template-columns: 1fr;
+  }
+}
+.setlist-dash-pane h3 {
+  margin: 0 0 8px;
+}
+.setlist-dash-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.setlist-dash-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+}
+.setlist-dash-row.is-section {
+  background: var(--background-secondary);
+  font-weight: 600;
+}
+.setlist-dash-row.is-missing .setlist-dash-title {
+  color: var(--text-error);
+}
+.setlist-dash-info {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.setlist-dash-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setlist-dash-meta,
+.setlist-dash-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+.setlist-dash-icon {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.setlist-dash-btn {
+  min-height: 40px;
+}

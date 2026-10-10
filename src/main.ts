@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS, SetlistSettings } from "./settings";
 import { ImportSongModal, LyricsSearchModal } from "./importer";
 import { getSetlists, isSetlist } from "./setlist";
 import { PerformanceView, VIEW_TYPE_PERFORMANCE } from "./view";
+import { DashboardView, VIEW_TYPE_DASHBOARD } from "./dashboard";
 
 class SetlistPicker extends FuzzySuggestModal<TFile> {
   constructor(app: App, private items: TFile[], private onPick: (f: TFile) => void) {
@@ -36,7 +37,15 @@ export default class SetlistPlugin extends Plugin {
     await this.loadSettings();
     this.registerView(VIEW_TYPE_PERFORMANCE, (leaf) => new PerformanceView(leaf, this));
 
+    this.registerView(VIEW_TYPE_DASHBOARD, (leaf) => new DashboardView(leaf, this));
+
     this.addRibbonIcon("music", "Start setlist performance", () => this.pickAndPerform());
+    this.addRibbonIcon("list-music", "Open setlist dashboard", () => void this.openDashboard());
+    this.addCommand({
+      id: "open-dashboard",
+      name: "Open dashboard",
+      callback: () => void this.openDashboard(),
+    });
 
     this.addCommand({
       id: "create-setlist",
@@ -110,6 +119,13 @@ export default class SetlistPlugin extends Plugin {
       return;
     }
     this.pickSetlist((f) => void this.perform(f));
+  }
+
+  async openDashboard(): Promise<void> {
+    const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_DASHBOARD)[0];
+    const leaf = existing ?? this.app.workspace.getLeaf("tab");
+    if (!existing) await leaf.setViewState({ type: VIEW_TYPE_DASHBOARD, active: true });
+    this.app.workspace.revealLeaf(leaf);
   }
 
   async perform(setlist: TFile): Promise<void> {

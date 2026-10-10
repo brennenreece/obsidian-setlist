@@ -13,3 +13,6 @@ Organize songs into setlists and perform lyrics full-screen (works on iPad).
 ## Getting songs
 - **Search online lyrics** (LRCLIB, lyrics only, no key needed) → Download saves a note in the song folder.
 - **Import song from text or ChordPro** → paste text; `{title:}`, `{artist:}`, `{key:}` fill the metadata, inline `[C]` chords are kept as written.
+
+## Dashboard
+**Open dashboard** (ribbon list icon): searchable song library (filter by tag) on the left; setlist editor on the right with add/remove, reorder (up/down buttons or drag on desktop), sections ("Set 1"), rename, duplicate, delete and Perform. Tap a song to edit title, artist, key, tempo, tags and lyrics.
