@@ -88,3 +88,12 @@
   color: var(--setlist-muted);
   font-size: calc(var(--setlist-font-size) * 0.6);
 }
+
+.setlist-search-results {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.setlist-import-text {
+  width: 100%;
+  font-family: var(--font-monospace);
+}

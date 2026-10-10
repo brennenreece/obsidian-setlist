@@ -9,3 +9,7 @@ Organize songs into setlists and perform lyrics full-screen (works on iPad).
 
 ## Install
 `npm install && npm run build`, then copy `main.js`, `manifest.json`, `styles.css` into `<vault>/.obsidian/plugins/setlist/` (sync the vault to iPad).
+
+## Getting songs
+- **Search online lyrics** (LRCLIB, lyrics only, no key needed) → Download saves a note in the song folder.
+- **Import song from text or ChordPro** → paste text; `{title:}`, `{artist:}`, `{key:}` fill the metadata, inline `[C]` chords are kept as written.

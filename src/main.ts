@@ -9,6 +9,7 @@ import {
   normalizePath,
 } from "obsidian";
 import { DEFAULT_SETTINGS, SetlistSettings } from "./settings";
+import { ImportSongModal, LyricsSearchModal } from "./importer";
 import { getSetlists, isSetlist } from "./setlist";
 import { PerformanceView, VIEW_TYPE_PERFORMANCE } from "./view";
 
@@ -51,6 +52,16 @@ export default class SetlistPlugin extends Plugin {
         if (!checking) this.pickSetlist((setlist) => void this.addSong(setlist, file));
         return true;
       },
+    });
+    this.addCommand({
+      id: "search-lyrics",
+      name: "Search online lyrics",
+      callback: () => new LyricsSearchModal(this.app, this).open(),
+    });
+    this.addCommand({
+      id: "import-song",
+      name: "Import song from text or ChordPro",
+      callback: () => new ImportSongModal(this.app, this).open(),
     });
     this.addCommand({
       id: "start-performance",
@@ -160,6 +171,15 @@ class SetlistSettingTab extends PluginSettingTab {
       .addText((t) =>
         t.setValue(s.setlistFolder).onChange(async (v) => {
           s.setlistFolder = v.trim();
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
+      .setName("Song folder")
+      .setDesc("Where downloaded and imported songs are saved.")
+      .addText((t) =>
+        t.setValue(s.songFolder).onChange(async (v) => {
+          s.songFolder = v.trim();
           await this.plugin.saveSettings();
         }),
       );
