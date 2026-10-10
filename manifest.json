@@ -1,0 +1,9 @@
+{
+  "id": "setlist",
+  "name": "Setlist",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Organize songs into setlists and perform lyrics in a full-screen stage view with next/previous navigation.",
+  "author": "Brennen Reece",
+  "isDesktopOnly": false
+}
