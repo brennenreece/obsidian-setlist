@@ -215,6 +215,9 @@ class SetlistSettingTab extends PluginSettingTab {
         .onChange(async (v) => {
           s.theme = v as "dark" | "light";
           await this.plugin.saveSettings();
+          this.plugin.app.workspace
+            .getLeavesOfType(VIEW_TYPE_PERFORMANCE)
+            .forEach((l) => (l.view as PerformanceView).applyTheme());
         }),
     );
     new Setting(containerEl).setName("Columns").addDropdown((d) =>

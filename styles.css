@@ -8,10 +8,31 @@
   --setlist-bg: #000;
   --setlist-fg: #f2f2f2;
   --setlist-muted: #9a9a9a;
-  background: var(--setlist-bg);
+  background: var(--setlist-bg) !important;
+  color: var(--setlist-fg);
+  --background-primary: var(--setlist-bg);
+  --background-secondary: var(--setlist-bg);
+  --text-normal: var(--setlist-fg);
+  --text-muted: var(--setlist-muted);
+  --text-faint: var(--setlist-muted);
+  --h1-color: var(--setlist-fg);
+  --h2-color: var(--setlist-fg);
+  --h3-color: var(--setlist-fg);
+  --h4-color: var(--setlist-fg);
+  --h5-color: var(--setlist-fg);
+  --h6-color: var(--setlist-fg);
+  --bold-color: var(--setlist-fg);
+  --italic-color: var(--setlist-fg);
+  --list-marker-color: var(--setlist-muted);
+  --link-color: var(--setlist-fg);
+  color-scheme: dark;
+}
+.setlist-stage .setlist-song-body,
+.setlist-stage .setlist-song-body * {
   color: var(--setlist-fg);
 }
 .setlist-stage.setlist-light {
+  color-scheme: light;
   --setlist-bg: #fff;
   --setlist-fg: #111;
   --setlist-muted: #666;
