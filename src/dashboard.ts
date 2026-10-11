@@ -1,12 +1,14 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf, normalizePath, setIcon } from "obsidian";
 import type SetlistPlugin from "./main";
 import { ImportSongModal, downloadLyrics } from "./importer";
+import { suggestWithGemini } from "./gemini";
 import { LyricsResult, searchLyrics } from "./lrclib";
 import {
   LibrarySuggestion,
   OnlineSuggestion,
   SongInfo,
   recommendFromLibrary,
+  recommendFromPlaylists,
   recommendOnline,
   songKey,
 } from "./recommend";
@@ -32,8 +34,10 @@ export class DashboardView extends ItemView {
   private suggest: {
     path: string;
     library: LibrarySuggestion[];
-    online: OnlineSuggestion[];
-    status: string;
+    playlists: OnlineSuggestion[];
+    artists: OnlineSuggestion[];
+    ai: OnlineSuggestion[];
+    status: Record<"playlists" | "artists" | "ai", string>;
   } | null = null;
   private suggestToken = 0;
   private refreshTimer: number | null = null;
@@ -337,7 +341,6 @@ export class DashboardView extends ItemView {
 
     const s = this.suggest;
     if (!s || s.path !== setlist.path) return;
-    if (s.status) el.createEl("p", { cls: "setlist-dash-empty", text: s.status });
 
     if (s.library.length) {
       el.createEl("div", { cls: "setlist-dash-subhead", text: "From your library" });
@@ -355,9 +358,17 @@ export class DashboardView extends ItemView {
       }
     }
 
-    if (s.online.length) {
-      el.createEl("div", { cls: "setlist-dash-subhead", text: "Discover online" });
-      for (const r of s.online) {
+    const sections: { key: "playlists" | "artists" | "ai"; heading: string }[] = [
+      { key: "playlists", heading: "From playlists with your songs" },
+      { key: "artists", heading: "From similar artists" },
+      { key: "ai", heading: "AI picks (Gemini)" },
+    ];
+    for (const { key, heading } of sections) {
+      const items = s[key];
+      if (!items.length && !s.status[key]) continue;
+      el.createEl("div", { cls: "setlist-dash-subhead", text: heading });
+      if (s.status[key]) el.createEl("p", { cls: "setlist-dash-empty", text: s.status[key] });
+      for (const r of items) {
         const row = el.createDiv("setlist-dash-row");
         const info = row.createDiv("setlist-dash-info");
         info.createDiv({ cls: "setlist-dash-title", text: r.title });
@@ -370,8 +381,16 @@ export class DashboardView extends ItemView {
   private async findSuggestions(setlist: TFile): Promise<void> {
     const token = ++this.suggestToken;
     const inSet = getSongs(this.app, setlist);
+    const empty = { playlists: "", artists: "", ai: "" };
     if (inSet.length === 0) {
-      this.suggest = { path: setlist.path, library: [], online: [], status: "Add a few songs first." };
+      this.suggest = {
+        path: setlist.path,
+        library: [],
+        playlists: [],
+        artists: [],
+        ai: [],
+        status: { ...empty, playlists: "Add a few songs first." },
+      };
       return this.renderSetlist();
     }
     const inSetPaths = new Set(inSet.map((f) => f.path));
@@ -380,30 +399,47 @@ export class DashboardView extends ItemView {
       .filter((f) => !inSetPaths.has(f.path))
       .map((f) => this.songInfo(f));
     const library = recommendFromLibrary(infos, candidates);
-
-    this.suggest = { path: setlist.path, library, online: [], status: "Searching online…" };
-    this.renderSetlist();
-
-    const counts = new Map<string, number>();
-    infos.forEach((i) => i.artist && counts.set(i.artist, (counts.get(i.artist) ?? 0) + 1));
-    const seeds = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
     const known = new Set(this.getSongFiles().map((f) => this.songInfo(f)).map((i) => songKey(i.artist, i.title)));
+    const seeds = [...infos.reduce((m, i) => (i.artist ? m.set(i.artist, (m.get(i.artist) ?? 0) + 1) : m), new Map<string, number>())]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
 
-    let status = "";
-    let online: OnlineSuggestion[] = [];
-    if (seeds.length === 0) {
-      status = "Add artists to your songs to get online suggestions.";
-    } else {
-      try {
-        online = await recommendOnline(seeds, known);
-        if (!online.length) status = "No online suggestions found.";
-      } catch (e) {
-        status = `Online suggestions failed: ${(e as Error).message}`;
-      }
-    }
-    if (token !== this.suggestToken) return;
-    this.suggest = { path: setlist.path, library, online, status };
+    const apiKey = this.plugin.settings.geminiApiKey.trim();
+    const state = {
+      path: setlist.path,
+      library,
+      playlists: [] as OnlineSuggestion[],
+      artists: [] as OnlineSuggestion[],
+      ai: [] as OnlineSuggestion[],
+      status: {
+        playlists: seeds.length ? "Searching playlists…" : "Add artists to your songs to get online suggestions.",
+        artists: seeds.length ? "Searching similar artists…" : "",
+        ai: apiKey ? "Asking Gemini…" : "",
+      },
+    };
+    this.suggest = state;
     this.renderSetlist();
+
+    const run = async (key: "playlists" | "artists" | "ai", task: () => Promise<OnlineSuggestion[]>, none: string) => {
+      try {
+        state[key] = await task();
+        state.status[key] = state[key].length ? "" : none;
+      } catch (e) {
+        state.status[key] = `Failed: ${(e as Error).message}`;
+      }
+      if (token === this.suggestToken) this.renderSetlist();
+    };
+    const tasks: Promise<void>[] = [];
+    if (seeds.length) {
+      tasks.push(run("playlists", () => recommendFromPlaylists(infos, known), "No matching playlists found."));
+      tasks.push(run("artists", () => recommendOnline(seeds, known), "No similar artists found."));
+    }
+    if (apiKey) {
+      tasks.push(
+        run("ai", () => suggestWithGemini(apiKey, this.plugin.settings.geminiModel, infos, known), "No AI suggestions."),
+      );
+    }
+    await Promise.all(tasks);
   }
 
   private async downloadSuggestion(r: OnlineSuggestion): Promise<void> {
@@ -413,7 +449,11 @@ export class DashboardView extends ItemView {
         results.find((x) => songKey(x.artistName, x.trackName) === songKey(r.artist, r.title)) ?? results[0];
       if (!match) return void new Notice(`No lyrics found for “${r.title}”.`);
       await downloadLyrics(this.app, this.plugin.settings.songFolder, match);
-      if (this.suggest) this.suggest.online = this.suggest.online.filter((x) => x !== r);
+      if (this.suggest) {
+        for (const k of ["playlists", "artists", "ai"] as const) {
+          this.suggest[k] = this.suggest[k].filter((x) => x !== r);
+        }
+      }
       this.scheduleRefresh();
     } catch (e) {
       new Notice(`Download failed: ${(e as Error).message}`);

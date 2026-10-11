@@ -19,3 +19,6 @@ Organize songs into setlists and perform lyrics full-screen (works on iPad).
 
 ## Suggestions
 In the dashboard, **Find similar songs** under a setlist suggests (1) songs from your library ranked by shared tags, artist, tempo and key, and (2) tracks by artists related to your setlist's main artists (Deezer's public API, no key). Online picks have a download button that fetches lyrics from LRCLIB.
+
+### Playlists and AI
+**Find similar songs** also searches public Deezer playlists (by your setlist's artists) that contain several of your songs and suggests the other tracks on them. Optionally add a free Gemini API key (aistudio.google.com) in settings for AI picks; each AI suggestion is checked against Deezer and dropped if it doesn't exist. The key is stored in the plugin's data file in your vault, and song titles/artists are sent to Google when you use it.
