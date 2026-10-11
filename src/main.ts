@@ -128,12 +128,12 @@ export default class SetlistPlugin extends Plugin {
     this.app.workspace.revealLeaf(leaf);
   }
 
-  async perform(setlist: TFile): Promise<void> {
+  async perform(setlist: TFile, index = 0): Promise<void> {
     const leaf = this.app.workspace.getLeaf("tab");
     await leaf.setViewState({
       type: VIEW_TYPE_PERFORMANCE,
       active: true,
-      state: { setlistPath: setlist.path, index: 0 },
+      state: { setlistPath: setlist.path, index },
     });
     this.app.workspace.revealLeaf(leaf);
   }

@@ -307,6 +307,7 @@ export class DashboardView extends ItemView {
       return;
     }
     let songNo = 0;
+    let playable = 0;
     items.forEach((item, i) => {
       const row = list.createDiv("setlist-dash-row");
       row.draggable = true;
@@ -338,6 +339,8 @@ export class DashboardView extends ItemView {
           const meta = [fm.artist, fm.key ? `Key ${fm.key}` : null].filter(Boolean).join(" · ");
           if (meta) info.createDiv({ cls: "setlist-dash-meta", text: meta });
           info.onclick = () => new SongEditModal(this.app, file, () => this.scheduleRefresh()).open();
+          const startAt = playable++;
+          this.iconButton(row, "play", "Start from here", () => void this.plugin.perform(setlist, startAt));
         }
       } else {
         info.createDiv({ cls: "setlist-dash-meta", text: item.text });
