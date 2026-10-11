@@ -2,8 +2,16 @@ import { ItemView, Notice, TFile, WorkspaceLeaf, normalizePath, setIcon } from "
 import type SetlistPlugin from "./main";
 import { ImportSongModal, downloadLyrics } from "./importer";
 import { LyricsResult, searchLyrics } from "./lrclib";
+import {
+  LibrarySuggestion,
+  OnlineSuggestion,
+  SongInfo,
+  recommendFromLibrary,
+  recommendOnline,
+  songKey,
+} from "./recommend";
 import { ConfirmModal, TextPromptModal } from "./modals";
-import { getSetlists, isSetlist } from "./setlist";
+import { getSetlists, getSongs, isSetlist } from "./setlist";
 import { SetlistItem, editSetlist, moveItem, parseSetlist } from "./setlistModel";
 import { SongEditModal, readTags } from "./songEditor";
 
@@ -21,6 +29,13 @@ export class DashboardView extends ItemView {
   private onlineQuery = "";
   private onlineResults: LyricsResult[] | null = null;
   private onlineStatus = "";
+  private suggest: {
+    path: string;
+    library: LibrarySuggestion[];
+    online: OnlineSuggestion[];
+    status: string;
+  } | null = null;
+  private suggestToken = 0;
   private refreshTimer: number | null = null;
   private dragFrom = -1;
 
@@ -298,6 +313,111 @@ export class DashboardView extends ItemView {
 
     const list = el.createDiv("setlist-dash-list");
     void this.app.vault.cachedRead(setlist).then((data) => this.renderItems(list, setlist, parseSetlist(data).items));
+
+    this.renderSuggestions(el.createDiv("setlist-dash-suggest"), setlist);
+  }
+
+  private songInfo(file: TFile): SongInfo {
+    const fm = this.fm(file);
+    const tempo = Number(fm.tempo);
+    return {
+      path: file.path,
+      title: this.songTitle(file),
+      artist: fm.artist != null ? String(fm.artist) : "",
+      key: fm.key != null ? String(fm.key) : "",
+      tempo: fm.tempo != null && !Number.isNaN(tempo) ? tempo : null,
+      tags: readTags(fm),
+    };
+  }
+
+  private renderSuggestions(el: HTMLElement, setlist: TFile): void {
+    el.createEl("h4", { text: "Suggestions" });
+    const bar = el.createDiv("setlist-dash-actions");
+    this.button(bar, "sparkles", "Find similar songs", () => void this.findSuggestions(setlist));
+
+    const s = this.suggest;
+    if (!s || s.path !== setlist.path) return;
+    if (s.status) el.createEl("p", { cls: "setlist-dash-empty", text: s.status });
+
+    if (s.library.length) {
+      el.createEl("div", { cls: "setlist-dash-subhead", text: "From your library" });
+      for (const r of s.library) {
+        const file = this.app.vault.getAbstractFileByPath(r.song.path);
+        if (!(file instanceof TFile)) continue;
+        const row = el.createDiv("setlist-dash-row");
+        const info = row.createDiv("setlist-dash-info");
+        info.createDiv({ cls: "setlist-dash-title", text: r.song.title });
+        info.createDiv({ cls: "setlist-dash-meta", text: [r.song.artist, r.reason].filter(Boolean).join(" · ") });
+        this.iconButton(row, "plus", "Add to setlist", async () => {
+          await this.addToSetlist(file);
+          if (this.suggest) this.suggest.library = this.suggest.library.filter((x) => x.song.path !== r.song.path);
+        });
+      }
+    }
+
+    if (s.online.length) {
+      el.createEl("div", { cls: "setlist-dash-subhead", text: "Discover online" });
+      for (const r of s.online) {
+        const row = el.createDiv("setlist-dash-row");
+        const info = row.createDiv("setlist-dash-info");
+        info.createDiv({ cls: "setlist-dash-title", text: r.title });
+        info.createDiv({ cls: "setlist-dash-meta", text: `${r.artist} · ${r.because}` });
+        this.iconButton(row, "download", "Download lyrics to library", () => void this.downloadSuggestion(r));
+      }
+    }
+  }
+
+  private async findSuggestions(setlist: TFile): Promise<void> {
+    const token = ++this.suggestToken;
+    const inSet = getSongs(this.app, setlist);
+    if (inSet.length === 0) {
+      this.suggest = { path: setlist.path, library: [], online: [], status: "Add a few songs first." };
+      return this.renderSetlist();
+    }
+    const inSetPaths = new Set(inSet.map((f) => f.path));
+    const infos = inSet.map((f) => this.songInfo(f));
+    const candidates = this.getSongFiles()
+      .filter((f) => !inSetPaths.has(f.path))
+      .map((f) => this.songInfo(f));
+    const library = recommendFromLibrary(infos, candidates);
+
+    this.suggest = { path: setlist.path, library, online: [], status: "Searching online…" };
+    this.renderSetlist();
+
+    const counts = new Map<string, number>();
+    infos.forEach((i) => i.artist && counts.set(i.artist, (counts.get(i.artist) ?? 0) + 1));
+    const seeds = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+    const known = new Set(this.getSongFiles().map((f) => this.songInfo(f)).map((i) => songKey(i.artist, i.title)));
+
+    let status = "";
+    let online: OnlineSuggestion[] = [];
+    if (seeds.length === 0) {
+      status = "Add artists to your songs to get online suggestions.";
+    } else {
+      try {
+        online = await recommendOnline(seeds, known);
+        if (!online.length) status = "No online suggestions found.";
+      } catch (e) {
+        status = `Online suggestions failed: ${(e as Error).message}`;
+      }
+    }
+    if (token !== this.suggestToken) return;
+    this.suggest = { path: setlist.path, library, online, status };
+    this.renderSetlist();
+  }
+
+  private async downloadSuggestion(r: OnlineSuggestion): Promise<void> {
+    try {
+      const results = await searchLyrics(`${r.artist} ${r.title}`);
+      const match =
+        results.find((x) => songKey(x.artistName, x.trackName) === songKey(r.artist, r.title)) ?? results[0];
+      if (!match) return void new Notice(`No lyrics found for “${r.title}”.`);
+      await downloadLyrics(this.app, this.plugin.settings.songFolder, match);
+      if (this.suggest) this.suggest.online = this.suggest.online.filter((x) => x !== r);
+      this.scheduleRefresh();
+    } catch (e) {
+      new Notice(`Download failed: ${(e as Error).message}`);
+    }
   }
 
   private renderItems(list: HTMLElement, setlist: TFile, items: SetlistItem[]): void {

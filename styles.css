@@ -226,3 +226,18 @@
 .setlist-fit .setlist-song-footer {
   margin-top: 0.5em;
 }
+
+.setlist-dash-suggest {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.setlist-dash-suggest h4 {
+  margin: 0;
+}
+.setlist-dash-subhead {
+  margin-top: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
