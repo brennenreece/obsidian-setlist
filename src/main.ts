@@ -239,27 +239,6 @@ class SetlistSettingTab extends PluginSettingTab {
         }),
       );
     new Setting(containerEl)
-      .setName("Gemini API key (optional)")
-      .setDesc(
-        "Enables AI song suggestions. Get a free key at aistudio.google.com. The key is stored in this plugin's data file in your vault, and your song titles and artists are sent to Google when you use it.",
-      )
-      .addText((t) => {
-        t.inputEl.type = "password";
-        t.setValue(s.geminiApiKey).onChange(async (v) => {
-          s.geminiApiKey = v.trim();
-          await this.plugin.saveSettings();
-        });
-      });
-    new Setting(containerEl)
-      .setName("Gemini model")
-      .setDesc("Model name used for AI suggestions.")
-      .addText((t) =>
-        t.setValue(s.geminiModel).onChange(async (v) => {
-          s.geminiModel = v.trim() || "gemini-2.5-flash";
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
       .setName("Tap screen edges to navigate")
       .setDesc("Tap the left or right 20% of the screen for previous or next song.")
       .addToggle((t) =>

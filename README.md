@@ -16,9 +16,3 @@ Organize songs into setlists and perform lyrics full-screen (works on iPad).
 
 ## Dashboard
 **Open dashboard** (ribbon list icon): searchable song library (filter by tag) on the left; setlist editor on the right with add/remove, reorder (up/down buttons or drag on desktop), sections ("Set 1"), rename, duplicate, delete and Perform. Tap a song to edit title, artist, key, tempo, tags and lyrics.
-
-## Suggestions
-In the dashboard, **Find similar songs** under a setlist suggests (1) songs from your library ranked by shared tags, artist, tempo and key, and (2) tracks by artists related to your setlist's main artists (Deezer's public API, no key). Online picks have a download button that fetches lyrics from LRCLIB.
-
-### Playlists and AI
-**Find similar songs** also searches public Deezer playlists (by your setlist's artists) that contain several of your songs and suggests the other tracks on them. Optionally add a free Gemini API key (aistudio.google.com) in settings for AI picks; each AI suggestion is checked against Deezer and dropped if it doesn't exist. The key is stored in the plugin's data file in your vault, and song titles/artists are sent to Google when you use it.
