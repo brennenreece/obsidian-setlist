@@ -10,6 +10,7 @@ import {
 } from "obsidian";
 import type SetlistPlugin from "./main";
 import { getSongs } from "./setlist";
+import { SongEditModal } from "./songEditor";
 
 export const VIEW_TYPE_PERFORMANCE = "setlist-performance";
 
@@ -88,6 +89,9 @@ export class PerformanceView extends ItemView {
     setIcon(this.nextBtn, "chevron-right");
     this.nextBtn.onclick = () => void this.go(1);
 
+    const edit = this.barEl.createEl("button", { cls: "setlist-btn", attr: { "aria-label": "Edit song" } });
+    setIcon(edit, "pencil");
+    edit.onclick = () => this.editCurrent();
     const smaller = this.barEl.createEl("button", { cls: "setlist-btn", text: "A-" });
     smaller.onclick = () => void this.changeFont(-2);
     const larger = this.barEl.createEl("button", { cls: "setlist-btn", text: "A+" });
@@ -120,6 +124,11 @@ export class PerformanceView extends ItemView {
     this.bodyEl = this.scrollEl.createDiv("setlist-song-body markdown-rendered");
     this.footerEl = this.scrollEl.createDiv("setlist-song-footer");
 
+    this.registerEvent(
+      this.app.metadataCache.on("changed", (f) => {
+        if (this.songs.some((s) => s.path === f.path)) void this.renderSong();
+      }),
+    );
     this.registerDomEvent(root, "click", (e) => this.onTap(e));
     this.registerSwipe(this.scrollEl);
     this.registerDomEvent(document, "keydown", (e) => this.onKey(e));
@@ -256,6 +265,12 @@ export class PerformanceView extends ItemView {
     this.applyFit();
   }
 
+  private editCurrent(): void {
+    const song = this.songs[this.index];
+    if (!song) return;
+    new SongEditModal(this.app, song, () => void this.reload()).open();
+  }
+
   private showJumpMenu(e: MouseEvent): void {
     e.stopPropagation();
     const menu = new Menu();
@@ -298,6 +313,8 @@ export class PerformanceView extends ItemView {
 
   private onKey(e: KeyboardEvent): void {
     if (this.app.workspace.getActiveViewOfType(PerformanceView) !== this) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest("input, textarea, select, .modal-container")) return;
     switch (e.key) {
       case "ArrowRight":
       case "PageDown":
